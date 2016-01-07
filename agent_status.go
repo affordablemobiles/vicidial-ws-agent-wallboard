@@ -3,6 +3,7 @@ package main
 import (
     //"fmt"
     "time"
+    "math"
     "net/http"
     s "strings"
     "regexp"
@@ -10,6 +11,8 @@ import (
     "github.com/ziutek/mymysql/mysql"
     _ "github.com/ziutek/mymysql/thrsafe"
 )
+
+const slaSeconds = 20
 
 type JSONAgentInfo struct {
     User string `json:"user"`
@@ -30,6 +33,10 @@ type JSONQueueInfo struct {
     Number_colour string `json:"number_colour"`
     Wait_time int `json:"wait_time"`
     Wait_time_colour string `json:"wait_time_colour"`
+    Met_SLA_Percentage float64 `json:"met_sla"`
+    Met_SLA_Colour string `json:"met_sla_colour"`
+    Drop_SLA_Percentage float64 `json:"drop_sla"`
+    Drop_SLA_Colour string `json:"drop_sla_colour"`
 }
 
 type JSONStatus struct {
@@ -282,6 +289,78 @@ func getQueues() map[string]JSONQueueInfo {
         queue.Number_colour = number_colour(queue.Number)
         queue.Wait_time_colour = wait_time_colour(queue.Wait_time)
 
+        tFormat := "2006-01-02"
+        tNow := time.Now()
+        tBegin := tNow.Format(tFormat) + " 00:00:00"
+        tEnd := tNow.Format(tFormat) + " 23:59:59"
+        var slaTotal float64 = 0
+
+        slaTotalRows, slaTotalRes, err := dbConn.Query(`
+            SELECT
+                COUNT(*) as 'total'
+            FROM
+                vicidial_closer_log
+            WHERE
+                    status NOT IN ( 'INCALL', 'AFTHRS' )
+                AND
+                    call_date BETWEEN '%s' AND '%s'
+                AND
+                    campaign_id IN ('` + s.Join(inbound_list, "', '") + `')
+        `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd))
+        checkErr(err)
+        if len(slaTotalRows) > 0 {
+            slaTotal = float64(slaTotalRows[0].Int(slaTotalRes.Map("total")))
+        } else {
+            slaTotal = 0
+        }
+
+        if slaTotal > 0 {
+            slaMetRows, slaMetRes, err := dbConn.Query(`
+                SELECT
+                    COUNT(*) as 'total'
+                FROM
+                    vicidial_closer_log
+                WHERE
+                        status NOT IN ( 'INCALL', 'AFTHRS' )
+                    AND
+                        call_date BETWEEN '%s' AND '%s'
+                    AND
+                        queue_seconds < %d
+                    AND
+                        campaign_id IN ('` + s.Join(inbound_list, "', '") + `')
+            `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd), slaSeconds)
+            checkErr(err)
+            if len(slaMetRows) > 0 {
+                queue.Met_SLA_Percentage = Round( (( float64(slaMetRows[0].Int(slaMetRes.Map("total"))) / slaTotal ) * 100), .5, 0 )
+            } else {
+                queue.Met_SLA_Percentage = 0
+            }
+
+            slaDropRows, slaDropRes, err := dbConn.Query(`
+                SELECT
+                    COUNT(*) as 'total'
+                FROM
+                    vicidial_closer_log
+                WHERE
+                        status = 'DROP'
+                    AND
+                        call_date BETWEEN '%s' AND '%s'
+                    AND
+                        campaign_id IN ('` + s.Join(inbound_list, "', '") + `')
+            `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd))
+            checkErr(err)
+            if len(slaDropRows) > 0 {
+                queue.Drop_SLA_Percentage = Round( (( float64(slaDropRows[0].Int(slaDropRes.Map("total"))) / slaTotal ) * 100), .5, 0 )
+            } else {
+                queue.Drop_SLA_Percentage = 0
+            }
+        } else {
+            queue.Met_SLA_Percentage = 100
+            queue.Drop_SLA_Percentage = 0
+        }
+        queue.Met_SLA_Colour = sla_met_colour(queue.Met_SLA_Percentage)
+        queue.Drop_SLA_Colour = sla_drop_colour(queue.Drop_SLA_Percentage)
+
         output[campaignRow.Str(campaignRes.Map("campaign_id"))] = queue
     }
 
@@ -322,6 +401,72 @@ func getGlobalQueue(start_time int) JSONQueueInfo {
     globalQueue.Number_colour = number_colour(globalQueue.Number)
     globalQueue.Wait_time_colour = wait_time_colour(globalQueue.Wait_time)
 
+    tFormat := "2006-01-02"
+    tNow := time.Now()
+    tBegin := tNow.Format(tFormat) + " 00:00:00"
+    tEnd := tNow.Format(tFormat) + " 23:59:59"
+    var slaTotal float64 = 0
+
+    slaTotalRows, slaTotalRes, err := dbConn.Query(`
+        SELECT
+            COUNT(*) as 'total'
+        FROM
+            vicidial_closer_log
+        WHERE
+                status NOT IN ( 'INCALL', 'AFTHRS' )
+            AND
+                call_date BETWEEN '%s' AND '%s'
+    `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd))
+    checkErr(err)
+    if len(slaTotalRows) > 0 {
+        slaTotal = float64(slaTotalRows[0].Int(slaTotalRes.Map("total")))
+    } else {
+        slaTotal = 0
+    }
+
+    if slaTotal > 0 {
+        slaMetRows, slaMetRes, err := dbConn.Query(`
+            SELECT
+                COUNT(*) as 'total'
+            FROM
+                vicidial_closer_log
+            WHERE
+                    status NOT IN ( 'INCALL', 'AFTHRS' )
+                AND
+                    call_date BETWEEN '%s' AND '%s'
+                AND
+                    queue_seconds < %d
+        `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd), slaSeconds)
+        checkErr(err)
+        if len(slaMetRows) > 0 {
+            globalQueue.Met_SLA_Percentage = Round( (( float64(slaMetRows[0].Int(slaMetRes.Map("total"))) / slaTotal ) * 100), .5, 0 )
+        } else {
+            globalQueue.Met_SLA_Percentage = 0
+        }
+
+        slaDropRows, slaDropRes, err := dbConn.Query(`
+            SELECT
+                COUNT(*) as 'total'
+            FROM
+                vicidial_closer_log
+            WHERE
+                    status = 'DROP'
+                AND
+                    call_date BETWEEN '%s' AND '%s'
+        `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd))
+        checkErr(err)
+        if len(slaDropRows) > 0 {
+            globalQueue.Drop_SLA_Percentage = Round( (( float64(slaDropRows[0].Int(slaDropRes.Map("total"))) / slaTotal ) * 100), .5, 0 )
+        } else {
+            globalQueue.Drop_SLA_Percentage = 0
+        }
+    } else {
+        globalQueue.Met_SLA_Percentage = 100
+        globalQueue.Drop_SLA_Percentage = 0
+    }
+    globalQueue.Met_SLA_Colour = sla_met_colour(globalQueue.Met_SLA_Percentage)
+    globalQueue.Drop_SLA_Colour = sla_drop_colour(globalQueue.Drop_SLA_Percentage)
+
     return globalQueue
 }
 
@@ -347,6 +492,44 @@ func wait_time_colour(time int) string {
 	} else {
 		return "c0392b"
 	}
+}
+
+func sla_met_colour(number float64) string {
+    if (number >= 80){
+        return "27ae60"
+    } else if (number >= 75) {
+        return "e67e22"
+    } else if (number >= 70) {
+        return "e74c3c"
+    } else {
+        return "c0392b"
+    }
+}
+
+func sla_drop_colour(number float64) string {
+    if (number < 5){
+        return "27ae60"
+    } else if (number < 15) {
+        return "e67e22"
+    } else if (number < 25) {
+        return "e74c3c"
+    } else {
+        return "c0392b"
+    }
+}
+
+func Round(val float64, roundOn float64, places int ) (newVal float64) {
+	var round float64
+	pow := math.Pow(10, float64(places))
+	digit := pow * val
+	_, div := math.Modf(digit)
+	if div >= roundOn {
+		round = math.Ceil(digit)
+	} else {
+		round = math.Floor(digit)
+	}
+	newVal = round / pow
+	return
 }
 
 func AgentStatusSingle(w http.ResponseWriter, r *http.Request) {

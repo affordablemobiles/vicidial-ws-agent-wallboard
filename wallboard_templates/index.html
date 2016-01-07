@@ -193,6 +193,10 @@
         $('#callsqueued_cell').css('background','#' + data["queues"][selval]["number_colour"]);
         $('#longestwait').text(toHHMMSS(data["queues"][selval]["wait_time"]));
         $('#longestwait_cell').css('background','#' + data["queues"][selval]["wait_time_colour"]);
+        $('#slamet').text(data["queues"][selval]["met_sla"]);
+        $('#slamet_cell').css('background','#' + data["queues"][selval]["met_sla_colour"]);
+        $('#sladrop').text(data["queues"][selval]["drop_sla"]);
+        $('#sladrop_cell').css('background','#' + data["queues"][selval]["drop_sla_colour"]);
     }
 
     {{ if .Edit }}
@@ -242,7 +246,7 @@
       {{ end }}
   <div id="extinfo-containers" class="container padded">
       {{ if not .Edit }}
-    <div id="CALLCOUNT" class="table-container" draggable="true" ondragstart="drag_start(event)" style="left: 25px; top: 0px;">
+    <div id="CALLCOUNT" class="table-container" draggable="true" ondragstart="drag_start(event)" style="left: 10px; top: 10px;">
       <div class="row">
         <div class="column" style="background: #34495E;">
           <select id="campselect" name="camp">
@@ -262,6 +266,18 @@
           <b>
             <div style="font-size: 25px;">Longest Wait</div>
             <div id="longestwait" style="font-size: 40px;">00:00:00</div>
+          </b>
+        </div>
+        <div id="slamet_cell" class="column" style="width: 175px; background: #27ae60;">
+          <b>
+            <div style="font-size: 25px;">SLA</div>
+            <div style="font-size: 40px;"><span id="slamet">0</span>%</div>
+          </b>
+        </div>
+        <div id="sladrop_cell" class="column" style="width: 175px; background: #27ae60;">
+          <b>
+            <div style="font-size: 25px;">DROP</div>
+            <div style="font-size: 40px;"><span id="sladrop">0</span>%</div>
           </b>
         </div>
       </div>
