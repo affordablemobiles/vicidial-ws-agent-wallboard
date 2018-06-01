@@ -32,7 +32,7 @@
     }
     .container-sipinfo {
       position: absolute;
-      width: 150px;
+      width: 148px;
       border: 1px solid rgba(0,0,0,0.5);
       color: #FFFFFF;
     }
@@ -123,6 +123,14 @@
       return time;
     }
 
+    function gridSnap(number) {
+      var precision = -1;
+      var factor = Math.pow(10, precision);
+      var tempNumber = number * factor;
+      var roundedTempNumber = Math.round(tempNumber);
+      return roundedTempNumber / factor;
+    };
+
     function drag_start(event) {
       var style = window.getComputedStyle(event.target, null);
       var str = (parseInt(style.getPropertyValue("left")) - event.clientX) + ',' + (parseInt(style.getPropertyValue("top")) - event.clientY)+ ',' + event.target.id;
@@ -132,8 +140,8 @@
     function drop(event) {
       var offset = event.dataTransfer.getData("Text").split(',');
       var dm = document.getElementById(offset[2]);
-      dm.style.left = (event.clientX + parseInt(offset[0],10)) + 'px';
-      dm.style.top = (event.clientY + parseInt(offset[1],10)) + 'px';
+      dm.style.left = gridSnap(event.clientX + parseInt(offset[0],10)) + 'px';
+      dm.style.top = gridSnap(event.clientY + parseInt(offset[1],10)) + 'px';
       event.preventDefault();
       return false;
     }
