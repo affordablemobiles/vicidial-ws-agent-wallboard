@@ -197,7 +197,15 @@ func getAgents() map[string]JSONAgentInfo {
                     case "TRADEV":
                         agent.Colour = "E08283"
                         agent.Status = "TRADEV"
-                        break;
+                    case "ADMIN":
+                        agent.Colour = "EF5350"
+                        agent.Status = "ADMIN"
+                    case "EMAILS":
+                        agent.Colour = "26A69A"
+                        agent.Status = "EMAILS"
+                    case "SOCMED":
+                        agent.Colour = "9CCC65"
+                        agent.Status = "SOCMED"
                     case "LOGIN":
                         agent.Colour = "000000";
                         agent.Status = "LOGIN"
@@ -301,7 +309,7 @@ func getQueues() map[string]JSONQueueInfo {
             FROM
                 vicidial_closer_log
             WHERE
-                    status NOT IN ( 'INCALL', 'AFTHRS' )
+                    status NOT IN ( 'AFTHRS' )
                 AND
                     call_date BETWEEN '%s' AND '%s'
                 AND
@@ -321,7 +329,7 @@ func getQueues() map[string]JSONQueueInfo {
                 FROM
                     vicidial_closer_log
                 WHERE
-                        status NOT IN ( 'INCALL', 'AFTHRS' )
+                        status NOT IN ( 'AFTHRS' )
                     AND
                         call_date BETWEEN '%s' AND '%s'
                     AND
@@ -413,7 +421,7 @@ func getGlobalQueue(start_time int) JSONQueueInfo {
         FROM
             vicidial_closer_log
         WHERE
-                status NOT IN ( 'INCALL', 'AFTHRS' )
+                status NOT IN ( 'AFTHRS' )
             AND
                 call_date BETWEEN '%s' AND '%s'
     `, mysql.Escape(dbConn, tBegin), mysql.Escape(dbConn, tEnd))
@@ -431,7 +439,7 @@ func getGlobalQueue(start_time int) JSONQueueInfo {
             FROM
                 vicidial_closer_log
             WHERE
-                    status NOT IN ( 'INCALL', 'AFTHRS' )
+                    status NOT IN ( 'AFTHRS' )
                 AND
                     call_date BETWEEN '%s' AND '%s'
                 AND
