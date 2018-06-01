@@ -31,4 +31,7 @@ Plus, as an added bonus, everything looks a lot smoother and runs more fluidly! 
   * WebSocket version: `http://<server>:8888/wallboard/`
   * Polling version: `http://<server>:8888/wallboard/poll.html`
   * Status JSON: `http://<server>:8888/wallboard/status`
+  * Edit Layout: `http://<server>:8888/wallboard/edit.html`
+    * Beware this layout editor is unauthenticated and will allow arbitrary post data to be written to data.json
+    * It is advisable to secure both this URL and the save endpoint `http://<server>:8888/wallboard/save` with some kind of auth / restriction.
 * We use nginx to reverse proxy to ours, for SSL & if running two instances on different ports, you can have a backup.
