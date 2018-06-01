@@ -41,15 +41,18 @@ func main() {
     ))
     wallboard_sub := wallboard_base.PathPrefix("/wallboard").Subrouter()
     // Wallboard WebSocket Page
-    wallboard_sub.HandleFunc("/", WallboardPage)
-    wallboard_sub.HandleFunc("/index.html", WallboardPage)
-    wallboard_sub.HandleFunc("/wallboard.php", WallboardPage)
+    wallboard_sub.HandleFunc("/",               WallboardPage)
+    wallboard_sub.HandleFunc("/index.html",     WallboardPage)
+    wallboard_sub.HandleFunc("/wallboard.php",  WallboardPage)
     // Old style polling interface
-    wallboard_sub.HandleFunc("/poll.html", WallboardPollPage)
+    wallboard_sub.HandleFunc("/poll.html",      WallboardPollPage)
+    // Edit page.
+    wallboard_sub.HandleFunc("/edit.html",      WallboardEditPage)
+    wallboard_sub.HandleFunc("/save",           WallboardSavePage)
     // WebSocket Interface
-    wallboard_sub.HandleFunc("/status_ws", AgentStatusWS)
+    wallboard_sub.HandleFunc("/status_ws",      AgentStatusWS)
     // Polling JSON Interface
-    wallboard_sub.HandleFunc("/status", AgentStatusSingle)
+    wallboard_sub.HandleFunc("/status",         AgentStatusSingle)
     //wallboard_sub.HandleFunc("/wallboard_json.php", AgentStatusSingle)
 
     // Bind to a port and pass our router in

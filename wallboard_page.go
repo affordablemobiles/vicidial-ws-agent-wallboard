@@ -6,8 +6,7 @@ import (
     "encoding/json"
     "io/ioutil"
     "strconv"
-    //"github.com/ziutek/mymysql/mysql"
-    //_ "github.com/ziutek/mymysql/thrsafe"
+    "github.com/kennygrant/sanitize"
 )
 
 type HTMLWallboardData struct {
@@ -21,7 +20,7 @@ func WallboardPage(w http.ResponseWriter, r *http.Request) {
     t, err := template.ParseFiles("wallboard_templates/index.html")
     checkErr(err)
 
-    data := getBasicData()
+    data := getBasicData("")
 
     t.Execute(w, data)
 }
@@ -30,7 +29,7 @@ func WallboardPollPage(w http.ResponseWriter, r *http.Request) {
     t, err := template.ParseFiles("wallboard_templates/index.html")
     checkErr(err)
 
-    data := getBasicData()
+    data := getBasicData("")
     data.Poll = true
 
     t.Execute(w, data)
@@ -40,13 +39,13 @@ func WallboardEditPage(w http.ResponseWriter, r *http.Request) {
     t, err := template.ParseFiles("wallboard_templates/index.html")
     checkErr(err)
 
-    data := getBasicData()
+    data := getBasicData("")
     data.Edit = true
 
     t.Execute(w, data)
 }
 
-func getBasicData() HTMLWallboardData {
+func getBasicData(layout string) HTMLWallboardData {
     output := HTMLWallboardData{ Edit: false, Poll: false }
 
     output.Campaigns = make(map[string]string)
@@ -66,22 +65,42 @@ func getBasicData() HTMLWallboardData {
 
     output.Boxes = make(map[string]map[string]int)
 
-    data, err := ioutil.ReadFile("wallboard_html/data.json")
-    checkErr(err)
-    var m map[string]map[string]string
-    err = json.Unmarshal(data, &m)
-    checkErr(err)
-    for name, value := range m {
-        values := make(map[string]int)
-        for k, v := range value {
-            values[k], _ = strconv.Atoi(v)
+    var filename string
+    if layout != "" {
+        filename = "data_" + sanitize.Name(layout) + ".json"
+    } else {
+        filename = "data.json"
+    }
+    if data, err := ioutil.ReadFile("wallboard_html/" + filename); err == nil {
+        var m map[string]map[string]string
+        if err = json.Unmarshal(data, &m); err == nil {
+            for name, value := range m {
+                values := make(map[string]int)
+                for k, v := range value {
+                    values[k], _ = strconv.Atoi(v)
+                }
+                output.Boxes[name] = values
+            }
         }
-        output.Boxes[name] = values
     }
 
     return output
 }
 
 func WallboardSavePage(w http.ResponseWriter, r *http.Request) {
-    //fmt.Fprintf(w, "%s", AgentStatusJSON())
+    if val := r.PostFormValue("data"); val != "" {
+        if err := ioutil.WriteFile("wallboard_html/data.json", []byte(val), 0775); err != nil {
+            w.Write([]byte(err.Error()))
+            w.WriteHeader(500)
+            return
+        } else {
+            w.Write([]byte("true"))
+            w.WriteHeader(500)
+            return
+        }
+    } else {
+        w.Write([]byte("empty data"))
+        w.WriteHeader(500)
+        return
+    }
 }
