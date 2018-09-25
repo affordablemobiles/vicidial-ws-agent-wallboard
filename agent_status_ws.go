@@ -67,8 +67,9 @@ func AgentStatusWS(w http.ResponseWriter, r *http.Request) {
     }
     c := &WallboardWS{send: make(chan []byte, 256), ws: ws}
     c.writeMutex = &sync.Mutex{}
-
-    c.uuid = fmt.Sprintf("%s", uuid.NewV4())
+	
+    uuid, _ := uuid.NewV4()
+    c.uuid = fmt.Sprintf("%s", uuid)
     clientMutex.Lock()
     clientMAP[c.uuid] = c
     clientMutex.Unlock()
